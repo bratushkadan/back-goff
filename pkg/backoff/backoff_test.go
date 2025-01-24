@@ -1,11 +1,12 @@
-package pkg_test
+package backoff_test
 
 import (
-	"kafka/svcs/pkg"
 	"math"
 	"slices"
 	"testing"
 	"time"
+
+	"github.com/bratushkadan/back-goff/pkg/backoff"
 )
 
 var (
@@ -14,12 +15,12 @@ var (
 )
 
 func TestBackoffNoJitter(t *testing.T) {
-	backoff := &pkg.Backoff{BaseStart: time.Second, BaseMax: 32 * time.Second, Factor: 2.0}
-	backoff2 := &pkg.Backoff{BaseStart: 3 * time.Second, BaseMax: 120 * time.Second, Factor: 3.0}
+	backoff1 := backoff.New(backoff.Conf{BaseStart: time.Second, BaseMax: 32 * time.Second, Factor: 2.0})
+	backoff2 := backoff.New(backoff.Conf{BaseStart: 3 * time.Second, BaseMax: 120 * time.Second, Factor: 3.0})
 	backoffExpected := []float64{1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 32.0, 32.0}
 	backoff2Expected := []float64{3.0, 9.0, 27.0, 81.0, 120.0, 120.0}
 
-	populate := func(b *pkg.Backoff, expected []float64) []float64 {
+	populate := func(b *backoff.Backoff, expected []float64) []float64 {
 		actual := make([]float64, 0, len(expected))
 		for range len(expected) {
 			actual = append(actual, b.GetIncr().Seconds())
@@ -27,7 +28,7 @@ func TestBackoffNoJitter(t *testing.T) {
 		return actual
 	}
 
-	backoffActual := populate(backoff, backoffExpected)
+	backoffActual := populate(backoff1, backoffExpected)
 	backoff2Actual := populate(backoff2, backoff2Expected)
 
 	compare := func(expected, actual []float64) bool {
@@ -54,9 +55,9 @@ func TestBackoffJitter(t *testing.T) {
 		baseStart = time.Second
 		baseMax   = 32 * time.Second
 	)
-	backoff := &pkg.Backoff{BaseStart: baseStart, BaseMax: baseMax, Factor: factor, JitterMin: jitterMin, JitterMax: jitterMax}
+	backOff := backoff.New(backoff.Conf{BaseStart: baseStart, BaseMax: baseMax, Factor: factor, JitterMin: jitterMin, JitterMax: jitterMax})
 
-	populate := func(b *pkg.Backoff, n int) []float64 {
+	populate := func(b *backoff.Backoff, n int) []float64 {
 		actual := make([]float64, 0, n)
 		for range n {
 			actual = append(actual, b.GetIncr().Seconds())
@@ -64,7 +65,7 @@ func TestBackoffJitter(t *testing.T) {
 		return actual
 	}
 
-	backoffActual := populate(backoff, 10)
+	backoffActual := populate(backOff, 10)
 
 	for i, prev := 0, float64(baseStart.Seconds()); i < len(backoffActual)-1; i++ {
 		b := math.Min(prev, baseMax.Seconds())
